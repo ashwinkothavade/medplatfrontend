@@ -1,0 +1,71 @@
+import React, { useState } from 'react';
+import axios from 'axios';
+
+export default function SqlQueryPage() {
+  const [query, setQuery] = useState('');
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const runQuery = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setResult(null);
+    try {
+      const res = await axios.post('http://localhost:5000/api/run-sql', { query });
+      setResult(res.data);
+    } catch (err) {
+      setError(err.response?.data?.error || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="App">
+      <div className="dashboard-header">
+        <h2>Run SQL Query</h2>
+      </div>
+      <form onSubmit={runQuery} style={{ marginBottom: 22 }}>
+        <textarea
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          rows={5}
+          style={{ width: '100%', maxWidth: 740, fontSize: '1.1rem', padding: 10, borderRadius: 7, border: '1px solid #bbb', marginBottom: 10 }}
+          placeholder="Enter your SQL query here..."
+        />
+        <br />
+        <button type="submit" disabled={loading || !query.trim()} style={{ padding: '8px 22px', fontWeight: 600, borderRadius: 6, background: '#6a82fb', color: '#fff', border: 'none', fontSize: '1.08rem' }}>
+          {loading ? 'Running...' : 'Run Query'}
+        </button>
+      </form>
+      {error && <div style={{ color: '#d32f2f', marginBottom: 16 }}>{error}</div>}
+      {result && result.fields && result.fields.length > 0 && (
+        <div className="card" style={{ overflowX: 'auto', marginTop: 10 }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+            <thead>
+              <tr>
+                {result.fields.map(f => (
+                  <th key={f} style={{ borderBottom: '2px solid #eee', padding: '7px 14px', textAlign: 'left', background: '#f8f8fc' }}>{f}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {result.rows.map((row, idx) => (
+                <tr key={idx}>
+                  {result.fields.map(f => (
+                    <td key={f} style={{ borderBottom: '1px solid #eee', padding: '7px 14px' }}>{row[f]}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {result && result.fields && result.fields.length === 0 && (
+        <div className="card" style={{ marginTop: 10, padding: 18, color: '#888' }}>No rows returned.</div>
+      )}
+    </div>
+  );
+}
