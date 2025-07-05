@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, ScatterChart, Scatter, ZAxis } from 'recharts';
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, ScatterChart, CartesianGrid, Scatter, ZAxis } from 'recharts';
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#8dd1e1', '#a4de6c', '#d0ed57', '#8884d8'];
 
@@ -7,10 +7,16 @@ export default function ChartDisplay({ data, chartType, xAxis, yAxis }) {
   if (!data || data.length === 0 || !xAxis || !yAxis)
     return <div className="card" style={{ textAlign: 'center', color: '#888', fontSize: '1.1rem', minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>No data to display.</div>;
 
-  // If data has xAxisValue and count, use those for chart keys
-  const isGrouped = data.length > 0 && data[0].xaxisvalue !== undefined && data[0].count !== undefined;
-  const chartX = isGrouped ? 'xaxisvalue' : xAxis;
-  const chartY = isGrouped ? 'count' : yAxis;
+  // For bar chart: if data has average/count, use that as Y
+  const isMonthGrouped = data.length > 0 && data[0].year_month !== undefined;
+  const isGrouped = data.length > 0 && data[0].xaxisvalue !== undefined;
+  const hasAverage = data.length > 0 && data[0].average !== undefined;
+  const hasCount = data.length > 0 && data[0].count !== undefined;
+  const chartX = isMonthGrouped ? 'year_month' : isGrouped ? 'xaxisvalue' : xAxis;
+  const chartY = hasAverage ? 'average' : hasCount ? 'count' : yAxis;
+
+  // Helper to display N/A for missing/null/empty
+  const displayValue = v => (v === null || v === undefined || v === '' ? 'N/A' : v);
 
   // Helper for histogram binning
   function getHistogramBins(data, xKey, numBins = 10) {
@@ -36,10 +42,11 @@ export default function ChartDisplay({ data, chartType, xAxis, yAxis }) {
     <div className="card" style={{ minHeight: 420 }}>
       {chartType === 'bar' && (
         <ResponsiveContainer width="100%" height={400}>
-          <BarChart data={data}>
-            <XAxis dataKey={chartX} />
-            <YAxis />
-            <Tooltip />
+          <BarChart data={data} margin={{ top: 20, right: 30, left: 10, bottom: 40 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey={chartX} angle={-30} textAnchor="end" height={60} tickFormatter={displayValue} />
+            <YAxis tickFormatter={displayValue} />
+            <Tooltip formatter={displayValue} labelFormatter={displayValue} />
             <Legend />
             <Bar dataKey={chartY} fill="#8884d8" />
           </BarChart>
@@ -47,10 +54,11 @@ export default function ChartDisplay({ data, chartType, xAxis, yAxis }) {
       )}
       {chartType === 'line' && (
         <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={data}>
-            <XAxis dataKey={chartX} />
-            <YAxis />
-            <Tooltip />
+          <LineChart data={data} margin={{ top: 20, right: 30, left: 10, bottom: 40 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey={chartX} angle={-30} textAnchor="end" height={60} tickFormatter={displayValue} />
+            <YAxis tickFormatter={displayValue} />
+            <Tooltip formatter={displayValue} labelFormatter={displayValue} />
             <Legend />
             <Line type="monotone" dataKey={chartY} stroke="#82ca9d" />
           </LineChart>

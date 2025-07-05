@@ -42,20 +42,20 @@ export default function SqlQueryPage() {
       </form>
       {error && <div style={{ color: '#d32f2f', marginBottom: 16 }}>{error}</div>}
       {result && result.fields && result.fields.length > 0 && (
-        <div className="card" style={{ overflowX: 'auto', marginTop: 10 }}>
-          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-            <thead>
+        <div style={{ maxHeight: 400, overflow: 'auto', margin: '16px 0', border: '1px solid #eee', borderRadius: 6 }}>
+          <table className="sql-result-table" style={{ minWidth: 600, borderCollapse: 'collapse', tableLayout: 'auto' }}>
+            <thead style={{ position: 'sticky', top: 0, background: '#fafafa', zIndex: 1 }}>
               <tr>
-                {result.fields.map(f => (
-                  <th key={f} style={{ borderBottom: '2px solid #eee', padding: '7px 14px', textAlign: 'left', background: '#f8f8fc' }}>{f}</th>
+                {result.fields.map((field, idx) => (
+                  <th key={idx} style={{ position: 'sticky', top: 0, background: '#fafafa', borderBottom: '2px solid #ddd', padding: '8px', textAlign: 'left' }}>{field}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {result.rows.map((row, idx) => (
-                <tr key={idx}>
-                  {result.fields.map(f => (
-                    <td key={f} style={{ borderBottom: '1px solid #eee', padding: '7px 14px' }}>{row[f]}</td>
+              {result.rows.map((row, rowIdx) => (
+                <tr key={rowIdx}>
+                  {result.fields.map((field, colIdx) => (
+                    <td key={colIdx} style={{ borderBottom: '1px solid #eee', padding: '8px' }}>{row[field]}</td>
                   ))}
                 </tr>
               ))}

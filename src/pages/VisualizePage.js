@@ -32,16 +32,15 @@ export default function VisualizePage() {
   }, [selectedTable]);
 
   useEffect(() => {
-    if (selectedTable && xAxis && yAxis) {
-      axios.post('http://localhost:5000/api/grouped-count', {
-        table: selectedTable,
-        xAxis,
-        indicator: yAxis
-      })
+    if (selectedTable && xAxis) {
+      const body = chartType === 'pie'
+        ? { table: selectedTable, xAxis, chartType }
+        : { table: selectedTable, xAxis, indicator: yAxis, chartType };
+      axios.post('http://localhost:5000/api/grouped-count', body)
         .then(res => setData(res.data))
         .catch(() => setData([]));
     }
-  }, [selectedTable, xAxis, yAxis]);
+  }, [selectedTable, xAxis, yAxis, chartType]);
 
   return (
     <div className="App">
