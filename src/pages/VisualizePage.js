@@ -43,23 +43,23 @@ export default function VisualizePage() {
   }, [selectedTable, xAxis, yAxis, chartType]);
 
   return (
-    <div className="App">
-      <div className="dashboard-header">
-        <h2>Data Visualization</h2>
+    <div className="page-main-card">
+      <div className="section-card" style={{ margin: '0 auto', maxWidth: 900 }}>
+        <h2 className="section-header">Data Visualization</h2>
+        <TableSelector tables={tables} selectedTable={selectedTable} onSelect={setSelectedTable} />
+        {columns.length > 0 && (
+          <ColumnSelector
+            columns={columns}
+            xAxis={xAxis}
+            setXAxis={setXAxis}
+            yAxis={yAxis}
+            setYAxis={setYAxis}
+            chartType={chartType}
+            setChartType={setChartType}
+          />
+        )}
+        <ChartDisplay data={data} chartType={chartType} xAxis={xAxis} yAxis={yAxis} />
       </div>
-      <TableSelector tables={tables} selectedTable={selectedTable} onSelect={setSelectedTable} />
-      {columns.length > 0 && (
-        <ColumnSelector
-          columns={columns}
-          xAxis={xAxis}
-          setXAxis={setXAxis}
-          yAxis={yAxis}
-          setYAxis={setYAxis}
-          chartType={chartType}
-          setChartType={setChartType}
-        />
-      )}
-      <ChartDisplay data={data} chartType={chartType} xAxis={xAxis} yAxis={yAxis} />
     </div>
   );
 }

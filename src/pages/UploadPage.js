@@ -14,11 +14,11 @@ export default function UploadPage() {
   useEffect(fetchTables, []);
 
   return (
-    <div className="App">
-      <div className="dashboard-header">
-        <h2>Upload Data (Excel to Database)</h2>
+    <div className="page-main-card">
+      <div className="section-card" style={{ margin: '0 auto', maxWidth: 700 }}>
+        <h2 className="section-header">Upload Data (Excel to Database)</h2>
+        <XlsxUploader tables={tables} onUpload={fetchTables} />
       </div>
-      <XlsxUploader tables={tables} onUpload={fetchTables} />
     </div>
   );
 }

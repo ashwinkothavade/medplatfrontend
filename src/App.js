@@ -12,15 +12,17 @@ import './App.css';
 function App() {
   return (
     <Router>
-      <nav style={{ background: '#f3f4f6', padding: '14px 0 10px 0', textAlign: 'center', boxShadow: '0 1px 8px rgba(100,100,100,0.06)' }}>
-        <Link to="/upload" style={{ margin: '0 18px', fontWeight: 600, color: '#6a82fb', textDecoration: 'none', fontSize: '1.07rem' }}>Upload Data</Link>
-        <Link to="/visualize" style={{ margin: '0 18px', fontWeight: 600, color: '#fc5c7d', textDecoration: 'none', fontSize: '1.07rem' }}>Visualize Data</Link>
-        <Link to="/sql" style={{ margin: '0 18px', fontWeight: 600, color: '#009688', textDecoration: 'none', fontSize: '1.07rem' }}>Run SQL</Link>
-        <Link to="/indicator-master" style={{ margin: '0 18px', fontWeight: 600, color: '#7c4dff', textDecoration: 'none', fontSize: '1.07rem' }}>Indicator Master</Link>
-        <Link to="/derived-attribute" style={{ margin: '0 18px', fontWeight: 600, color: '#f9a825', textDecoration: 'none', fontSize: '1.07rem' }}>Derived Attribute Builder</Link>
-        <Link to="/dataset-builder" style={{ margin: '0 18px', fontWeight: 600, color: '#00bcd4', textDecoration: 'none', fontSize: '1.07rem' }}>Dataset Builder</Link>
-      </nav>
-      <Routes>
+      <div className="sidenav-layout">
+        <nav className="sidenav">
+          <Link to="/upload" className="sidenav-link upload"><span role="img" aria-label="upload">⬆️</span> Upload Data</Link>
+          <Link to="/visualize" className="sidenav-link visualize"><span role="img" aria-label="visualize">📊</span> Visualize Data</Link>
+          <Link to="/sql" className="sidenav-link sql"><span role="img" aria-label="sql">💻</span> Run SQL</Link>
+          <Link to="/indicator-master" className="sidenav-link indicator"><span role="img" aria-label="indicator">🏷️</span> Indicator Master</Link>
+          <Link to="/derived-attribute" className="sidenav-link derived"><span role="img" aria-label="derived">🧮</span> Derived Attribute Builder</Link>
+          <Link to="/dataset-builder" className="sidenav-link dataset"><span role="img" aria-label="dataset">🗃️</span> Dataset Builder</Link>
+        </nav>
+        <div className="main-content">
+          <Routes>
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/visualize" element={<VisualizePage />} />
         <Route path="/sql" element={<SqlQueryPage />} />
@@ -28,7 +30,9 @@ function App() {
         <Route path="/derived-attribute" element={<DerivedAttributePage />} />
         <Route path="/dataset-builder" element={<DatasetBuilderPage />} />
         <Route path="*" element={<Navigate to="/visualize" replace />} />
-      </Routes>
+          </Routes>
+        </div>
+      </div>
     </Router>
   );
 }

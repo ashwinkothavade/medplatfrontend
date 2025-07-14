@@ -128,11 +128,11 @@ export default function DerivedAttributePage() {
   };
 
   return (
-    <div>
-      <div style={{ maxWidth: 800, margin: '40px auto', padding: 24, background: '#fff', borderRadius: 8, boxShadow: '0 2px 12px #eee' }}>
-        <h2>Derived Attribute Builder</h2>
+    <div className="page-main-card">
+      <div className="section-card" style={{ maxWidth: 800, margin: '40px auto' }}>
+        <h2 className="section-header">Derived Attribute Builder</h2>
         <div style={{ marginBottom: 18 }}>
-          <label><b>Select Table:</b></label><br />
+          <label><b className="section-label">Select Table:</b></label><br />
           <input
             list="table-list"
             value={selectedTable}
@@ -144,9 +144,9 @@ export default function DerivedAttributePage() {
             {tables.map(t => <option key={t} value={t} />)}
           </datalist>
         </div>
-        <div style={{ display: 'flex', gap: 20, marginBottom: 18 }}>
+        <div style={{ display: 'flex', gap: 20, marginBottom: 18 }} className="section-card">
           <div style={{ flex: 1 }}>
-            <label><b>Attribute 1:</b></label><br />
+            <label><b className="section-label">Attribute 1:</b></label><br />
             <input
               list="attr1-list"
               value={attr1}
@@ -157,12 +157,12 @@ export default function DerivedAttributePage() {
             <datalist id="attr1-list">
               {options.map(opt => <option key={opt.value} value={opt.value}>{opt.type === 'indicator' ? '(Indicator) ' : ''}{opt.label}</option>)}
             </datalist>
-            <div style={{ marginTop: 6, color: '#555', fontSize: 14 }}>
+            <div style={{ marginTop: 6, color: '#314b89', fontSize: 14 }}>
               {val1 !== null && `Value: ${val1}`}
             </div>
           </div>
           <div style={{ flex: 1 }}>
-            <label><b>Attribute 2:</b></label><br />
+            <label><b className="section-label">Attribute 2:</b></label><br />
             <input
               list="attr2-list"
               value={attr2}
@@ -173,18 +173,18 @@ export default function DerivedAttributePage() {
             <datalist id="attr2-list">
               {options.map(opt => <option key={opt.value} value={opt.value}>{opt.type === 'indicator' ? '(Indicator) ' : ''}{opt.label}</option>)}
             </datalist>
-            <div style={{ marginTop: 6, color: '#555', fontSize: 14 }}>
+            <div style={{ marginTop: 6, color: '#314b89', fontSize: 14 }}>
               {val2 !== null && `Value: ${val2}`}
             </div>
           </div>
           <div style={{ flex: 0.5 }}>
-            <label><b>Operation:</b></label><br />
+            <label><b className="section-label">Operation:</b></label><br />
             <select value={operation} onChange={e => setOperation(e.target.value)} style={{ width: '100%', padding: 8, fontSize: 16 }}>
               {operations.map(op => <option key={op.value} value={op.value}>{op.label}</option>)}
             </select>
           </div>
         </div>
-        <form onSubmit={handleSave}>
+        <form onSubmit={handleSave} className="section-card" style={{ margin: '18px 0', background: '#f8faff', borderRadius: 8 }}>
           <div style={{ marginBottom: 15 }}>
             <label><b>Derived Attribute Name:</b></label><br />
             <input
@@ -201,7 +201,7 @@ export default function DerivedAttributePage() {
           <div style={{ marginBottom: 15, color: '#333', fontSize: 16 }}>
             <b>Result:</b> {result !== null ? result : '(select attributes and operation)'}
           </div>
-          <button type="submit" style={{ padding: '8px 26px', fontSize: 16, borderRadius: 4, background: '#1976d2', color: '#fff', border: 'none' }}>
+          <button type="submit" style={{ padding: '8px 26px', fontSize: 16, borderRadius: 4, background: '#314b89', color: '#fff', border: 'none', fontWeight: 600 }}>
             Save Derived Attribute
           </button>
           {saveMsg && <div style={{ color: 'green', marginTop: 14 }}>{saveMsg}</div>}
@@ -209,16 +209,16 @@ export default function DerivedAttributePage() {
         </form>
       </div>
 
-      <div style={{ marginTop: 40 }}>
-        <h3>Saved Derived Attributes</h3>
-        <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #eee', borderRadius: 6, padding: 10 }}>
+      <div className="section-card" style={{ marginTop: 40 }}>
+        <h3 className="section-header-accent">Saved Derived Attributes</h3>
+        <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #e0e7ef', borderRadius: 8, background: '#fff', padding: 12 }}>
           <table style={{ width: '100%', fontSize: 15, borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#f8f8f8' }}>
-                <th style={{ padding: 6, border: '1px solid #eee' }}>Name</th>
-                <th style={{ padding: 6, border: '1px solid #eee' }}>Formula</th>
-                <th style={{ padding: 6, border: '1px solid #eee' }}>Result</th>
-                <th style={{ padding: 6, border: '1px solid #eee' }}>Created On</th>
+              <tr style={{ background: '#f8faff' }}>
+                <th style={{ padding: 7, border: '1px solid #e0e7ef' }}>Name</th>
+                <th style={{ padding: 7, border: '1px solid #e0e7ef' }}>Formula</th>
+                <th style={{ padding: 7, border: '1px solid #e0e7ef' }}>Result</th>
+                <th style={{ padding: 7, border: '1px solid #e0e7ef' }}>Created On</th>
               </tr>
             </thead>
             <tbody>
@@ -227,10 +227,10 @@ export default function DerivedAttributePage() {
               )}
               {derivedList.map(row => (
                 <tr key={row.id}>
-                  <td style={{ padding: 6, border: '1px solid #eee' }}>{row.derived_name}</td>
-                  <td style={{ padding: 6, border: '1px solid #eee', fontFamily: 'monospace', fontSize: 14 }}>{row.formula}</td>
-                  <td style={{ padding: 6, border: '1px solid #eee', textAlign: 'center' }}>{row.result !== null && row.result !== undefined ? Number(row.result).toFixed(6) : ''}</td>
-                  <td style={{ padding: 6, border: '1px solid #eee', fontSize: 13 }}>{row.created_on ? new Date(row.created_on).toLocaleString() : ''}</td>
+                  <td style={{ padding: 7, border: '1px solid #e0e7ef' }}>{row.derived_name}</td>
+                  <td style={{ padding: 7, border: '1px solid #e0e7ef', fontFamily: 'monospace', fontSize: 14 }}>{row.formula}</td>
+                  <td style={{ padding: 7, border: '1px solid #e0e7ef', textAlign: 'center' }}>{row.result !== null && row.result !== undefined ? Number(row.result).toFixed(6) : ''}</td>
+                  <td style={{ padding: 7, border: '1px solid #e0e7ef', fontSize: 13 }}>{row.created_on ? new Date(row.created_on).toLocaleString() : ''}</td>
                 </tr>
               ))}
             </tbody>

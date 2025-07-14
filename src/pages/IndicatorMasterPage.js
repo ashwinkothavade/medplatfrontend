@@ -46,11 +46,12 @@ export default function IndicatorMasterPage() {
   }, []);
 
   return (
-    <div style={{ maxWidth: 700, margin: '40px auto', padding: 24, background: '#fff', borderRadius: 8, boxShadow: '0 2px 12px #eee' }}>
-      <h2>Indicator Master</h2>
-      <form onSubmit={handleSubmit} style={{ marginBottom: 32 }}>
+    <div className="page-main-card">
+      <div className="section-card" style={{ maxWidth: 700, margin: '40px auto' }}>
+        <h2 className="section-header">Indicator Master</h2>
+      <form onSubmit={handleSubmit} className="section-card" style={{ marginBottom: 32, background: '#f8faff', borderRadius: 8 }}>
         <div style={{ marginBottom: 14 }}>
-          <label><b>Indicator Name:</b></label><br />
+          <label><b className="section-label">Indicator Name:</b></label><br />
           <input
             type="text"
             value={indicatorName}
@@ -60,7 +61,7 @@ export default function IndicatorMasterPage() {
           />
         </div>
         <div style={{ marginBottom: 14 }}>
-          <label><b>Description:</b></label><br />
+          <label><b className="section-label">Description:</b></label><br />
           <textarea
             value={description}
             onChange={e => setDescription(e.target.value)}
@@ -69,7 +70,7 @@ export default function IndicatorMasterPage() {
           />
         </div>
         <div style={{ marginBottom: 14 }}>
-          <label><b>SQL Query (should return a single integer):</b></label><br />
+          <label><b className="section-label">SQL Query (should return a single integer):</b></label><br />
           <textarea
             value={sqlQuery}
             onChange={e => setSqlQuery(e.target.value)}
@@ -80,7 +81,7 @@ export default function IndicatorMasterPage() {
           />
         </div>
         <div style={{ marginBottom: 16 }}>
-          <label><b>Created By (optional):</b></label><br />
+          <label><b className="section-label">Created By (optional):</b></label><br />
           <input
             type="number"
             value={createdBy}
@@ -89,27 +90,27 @@ export default function IndicatorMasterPage() {
             placeholder="User ID"
           />
         </div>
-        <button type="submit" disabled={loading} style={{ padding: '8px 26px', fontSize: 16, borderRadius: 4, background: '#1976d2', color: '#fff', border: 'none' }}>
+        <button type="submit" disabled={loading} style={{ padding: '8px 22px', fontWeight: 600, borderRadius: 6, background: '#314b89', color: '#fff', border: 'none', fontSize: '1.08rem' }}>
           {loading ? 'Saving...' : 'Save Indicator'}
         </button>
       </form>
-      {error && <div style={{ color: 'red', marginBottom: 18 }}>{error}</div>}
+      {error && <div style={{ color: '#e53935', marginBottom: 16 }}>{error}</div>}
       {result && result.success && (
-        <div style={{ color: 'green', marginBottom: 18 }}>
+        <div style={{ color: 'green', marginBottom: 16 }}>
           Saved! Query Result: <b>{result.query_result}</b>
         </div>
       )}
-      <h3>Saved Indicators</h3>
-      <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #eee', borderRadius: 6, padding: 10 }}>
+      <h3 className="section-header-accent">Saved Indicators</h3>
+      <div className="section-card" style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #e0e7ef', borderRadius: 8, background: '#fff', padding: 12 }}>
         <table style={{ width: '100%', fontSize: 15, borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ background: '#f8f8f8' }}>
-              <th style={{ padding: 6, border: '1px solid #eee' }}>Name</th>
-              <th style={{ padding: 6, border: '1px solid #eee' }}>Description</th>
-              <th style={{ padding: 6, border: '1px solid #eee' }}>Query</th>
-              <th style={{ padding: 6, border: '1px solid #eee' }}>Result</th>
-              <th style={{ padding: 6, border: '1px solid #eee' }}>Created By</th>
-              <th style={{ padding: 6, border: '1px solid #eee' }}>Created On</th>
+            <tr style={{ background: '#f8faff' }}>
+              <th style={{ padding: 7, border: '1px solid #e0e7ef' }}>Name</th>
+              <th style={{ padding: 7, border: '1px solid #e0e7ef' }}>Description</th>
+              <th style={{ padding: 7, border: '1px solid #e0e7ef' }}>Query</th>
+              <th style={{ padding: 7, border: '1px solid #e0e7ef' }}>Result</th>
+              <th style={{ padding: 7, border: '1px solid #e0e7ef' }}>Created By</th>
+              <th style={{ padding: 7, border: '1px solid #e0e7ef' }}>Created On</th>
             </tr>
           </thead>
           <tbody>
@@ -118,17 +119,18 @@ export default function IndicatorMasterPage() {
             )}
             {history.map(row => (
               <tr key={row.id}>
-                <td style={{ padding: 6, border: '1px solid #eee' }}>{row.indicator_name}</td>
-                <td style={{ padding: 6, border: '1px solid #eee' }}>{row.description}</td>
-                <td style={{ padding: 6, border: '1px solid #eee', fontFamily: 'monospace', fontSize: 14 }}>{row.sql_query}</td>
-                <td style={{ padding: 6, border: '1px solid #eee', textAlign: 'center' }}>{row.query_result}</td>
-                <td style={{ padding: 6, border: '1px solid #eee', textAlign: 'center' }}>{row.created_by || ''}</td>
-                <td style={{ padding: 6, border: '1px solid #eee', fontSize: 13 }}>{row.created_on ? new Date(row.created_on).toLocaleString() : ''}</td>
+                <td style={{ padding: 7, border: '1px solid #e0e7ef' }}>{row.indicator_name}</td>
+                <td style={{ padding: 7, border: '1px solid #e0e7ef' }}>{row.description}</td>
+                <td style={{ padding: 7, border: '1px solid #e0e7ef', fontFamily: 'monospace', fontSize: 14 }}>{row.sql_query}</td>
+                <td style={{ padding: 7, border: '1px solid #e0e7ef', textAlign: 'center' }}>{row.query_result}</td>
+                <td style={{ padding: 7, border: '1px solid #e0e7ef', textAlign: 'center' }}>{row.created_by || ''}</td>
+                <td style={{ padding: 7, border: '1px solid #e0e7ef', fontSize: 13 }}>{row.created_on ? new Date(row.created_on).toLocaleString() : ''}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
     </div>
+  </div>
   );
 }
