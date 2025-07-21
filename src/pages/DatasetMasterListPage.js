@@ -4,6 +4,11 @@ import { askGemini } from "../utils/geminiHelper"; // Gemini Q&A helper
 import {
   BarChart,
   Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -45,6 +50,7 @@ export default function DatasetMasterListPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState([]); // [{ column, operator, value, logic }]
   const [availableColumns, setAvailableColumns] = useState([]);
+  const [chartType, setChartType] = useState("bar"); // New state for chart type
 
   // Gemini Q&A state
   const [fullData, setFullData] = useState([]); // Full SQL result for Q&A
@@ -291,124 +297,98 @@ export default function DatasetMasterListPage() {
       console.log("Original SQL:", dataset.sql_query);
       console.log("Filtered SQL:", filteredSQL);
 
-      // First try the dedicated chart endpoint
-      let response;
-      let sqlResultData = []; // Store the actual SQL result data for Gemini
+      // Use the /api/run-sql endpoint to get SQL results
+      const response = await axios.post("/api/run-sql", {
+        query: filteredSQL,
+      });
 
-      try {
-        response = await axios.post("/api/dataset-chart", {
-          sql: filteredSQL,
-          datasetId: dataset.id,
-        });
-        setChartData(response.data);
+      // Store the SQL result data for Gemini
+      const sqlResultData = response.data.rows || [];
+      console.log("SQL Result data:", sqlResultData);
 
-        // Also fetch the raw SQL data for Gemini Q&A
-        try {
-          const sqlResponse = await axios.post("/api/run-sql", {
-            sql: filteredSQL,
-          });
-          sqlResultData = sqlResponse.data.rows || [];
-        } catch (sqlErr) {
-          console.log("Could not fetch SQL data for Gemini:", sqlErr);
-        }
-      } catch (chartErr) {
-        console.log("Chart API not available, using preview-sql fallback");
+      if (sqlResultData.length === 0) {
+        setChartData([]);
+        setChartError("No data returned from SQL query");
+        setFullData([]); // Clear Gemini data too
+        return;
+      }
 
-        // Fallback: Use the existing preview-sql endpoint
-        response = await axios.post("/api/preview-sql", {
-          sql: filteredSQL,
-        });
+      // Get the column names
+      const columns = Object.keys(sqlResultData[0]);
+      console.log("Available columns:", columns);
 
-        // Store the SQL result data for Gemini
-        sqlResultData = response.data.rows || [];
+      // Transform the data into chart format
+      let transformedChartData = [];
 
-        // Transform the preview data into chart format
-        const rows = response.data.rows || [];
-        console.log("SQL Preview data:", rows);
+      // If we have exactly 2 columns, use them as label and count
+      if (columns.length === 2) {
+        const labelCol = columns[0];
+        const countCol = columns[1];
 
-        if (rows.length === 0) {
-          setChartData([]);
-          setChartError("No data returned from SQL query");
-          setFullData([]); // Clear Gemini data too
-          return;
-        }
+        transformedChartData = sqlResultData.map((row) => ({
+          label: String(row[labelCol]),
+          count: Number(row[countCol]) || 0,
+        }));
 
-        // Get the column names
-        const columns = Object.keys(rows[0]);
-        console.log("Available columns:", columns);
+        console.log("Chart data (2 columns):", transformedChartData);
+      }
+      // If we have more than 2 columns, try to find a count column
+      else if (columns.length > 2) {
+        // Look for common count column names
+        const countColumn = columns.find(
+          (col) =>
+            col.toLowerCase().includes("count") ||
+            col.toLowerCase().includes("total") ||
+            col.toLowerCase().includes("sum") ||
+            col.toLowerCase() === "cnt"
+        );
 
-        // If we have exactly 2 columns, use them as label and count
-        if (columns.length === 2) {
+        if (countColumn) {
+          // Use first column as label and found count column as count
           const labelCol = columns[0];
-          const countCol = columns[1];
-
-          const chartData = rows.map((row) => ({
+          transformedChartData = sqlResultData.map((row) => ({
             label: String(row[labelCol]),
-            count: Number(row[countCol]) || 0,
+            count: Number(row[countColumn]) || 0,
           }));
-
-          console.log("Chart data (2 columns):", chartData);
-          setChartData(chartData);
-        }
-        // If we have more than 2 columns, try to find a count column
-        else if (columns.length > 2) {
-          // Look for common count column names
-          const countColumn = columns.find(
-            (col) =>
-              col.toLowerCase().includes("count") ||
-              col.toLowerCase().includes("total") ||
-              col.toLowerCase().includes("sum") ||
-              col.toLowerCase() === "cnt"
-          );
-
-          if (countColumn) {
-            // Use first column as label and found count column as count
-            const labelCol = columns[0];
-            const chartData = rows.map((row) => ({
-              label: String(row[labelCol]),
-              count: Number(row[countColumn]) || 0,
-            }));
-            console.log("Chart data (count column found):", chartData);
-            setChartData(chartData);
-          } else {
-            // If no count column found, count occurrences of first column
-            const labelCol = columns[0];
-            const groupedData = rows.reduce((acc, row) => {
-              const label = String(row[labelCol]);
-              acc[label] = (acc[label] || 0) + 1;
-              return acc;
-            }, {});
-
-            const chartData = Object.entries(groupedData).map(
-              ([label, count]) => ({
-                label,
-                count,
-              })
-            );
-            console.log("Chart data (grouped):", chartData);
-            setChartData(chartData);
-          }
-        }
-        // If only 1 column, count occurrences
-        else if (columns.length === 1) {
+          console.log("Chart data (count column found):", transformedChartData);
+        } else {
+          // If no count column found, count occurrences of first column
           const labelCol = columns[0];
-          const groupedData = rows.reduce((acc, row) => {
+          const groupedData = sqlResultData.reduce((acc, row) => {
             const label = String(row[labelCol]);
             acc[label] = (acc[label] || 0) + 1;
             return acc;
           }, {});
 
-          const chartData = Object.entries(groupedData).map(
+          transformedChartData = Object.entries(groupedData).map(
             ([label, count]) => ({
               label,
               count,
             })
           );
-          setChartData(chartData);
-        } else {
-          throw new Error("No data columns found");
+          console.log("Chart data (grouped):", transformedChartData);
         }
       }
+      // If only 1 column, count occurrences
+      else if (columns.length === 1) {
+        const labelCol = columns[0];
+        const groupedData = sqlResultData.reduce((acc, row) => {
+          const label = String(row[labelCol]);
+          acc[label] = (acc[label] || 0) + 1;
+          return acc;
+        }, {});
+
+        transformedChartData = Object.entries(groupedData).map(
+          ([label, count]) => ({
+            label,
+            count,
+          })
+        );
+      } else {
+        throw new Error("No data columns found");
+      }
+
+      setChartData(transformedChartData);
 
       // Update fullData with the current (possibly filtered) SQL result for Gemini Q&A
       setFullData(sqlResultData);
@@ -432,6 +412,7 @@ export default function DatasetMasterListPage() {
     setChartError("");
     setAnswer(""); // Reset Q&A answer
     setQuestion("");
+    setChartType("bar"); // Reset to default chart type
 
     // Extract available columns for filtering
     const columns = extractColumnsFromSQL(dataset.sql_query);
@@ -544,6 +525,149 @@ export default function DatasetMasterListPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Function to render the selected chart type
+  const renderChart = () => {
+    if (!chartData || chartData.length === 0) return null;
+
+    const colors = ['#314b89', '#5a7bb5', '#8da4d1', '#b8c8e1', '#e0e7ef'];
+
+    switch (chartType) {
+      case "line":
+        return (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={chartData}
+              margin={{
+                top: 20,
+                right: 30,
+                left: 20,
+                bottom: 60,
+              }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ef" />
+              <XAxis
+                dataKey="label"
+                angle={-45}
+                textAnchor="end"
+                height={80}
+                fontSize={12}
+                stroke="#314b89"
+              />
+              <YAxis
+                label={{
+                  value: "Count",
+                  angle: -90,
+                  position: "insideLeft",
+                }}
+                fontSize={12}
+                stroke="#314b89"
+              />
+              <Tooltip
+                formatter={(value, name) => [value, "Count"]}
+                labelFormatter={(label) => `Category: ${label}`}
+                contentStyle={{
+                  backgroundColor: "#f8f9fa",
+                  border: "1px solid #314b89",
+                  borderRadius: "4px",
+                }}
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="count"
+                stroke="#314b89"
+                strokeWidth={3}
+                dot={{ fill: "#314b89", strokeWidth: 2, r: 4 }}
+                name="Count"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        );
+
+      case "pie":
+        return (
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ label, percent }) => `${label} (${(percent * 100).toFixed(0)}%)`}
+                outerRadius={120}
+                fill="#314b89"
+                dataKey="count"
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value, name) => [value, "Count"]}
+                contentStyle={{
+                  backgroundColor: "#f8f9fa",
+                  border: "1px solid #314b89",
+                  borderRadius: "4px",
+                }}
+              />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        );
+
+      case "bar":
+      default:
+        return (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={chartData}
+              margin={{
+                top: 20,
+                right: 30,
+                left: 20,
+                bottom: 60,
+              }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ef" />
+              <XAxis
+                dataKey="label"
+                angle={-45}
+                textAnchor="end"
+                height={80}
+                fontSize={12}
+                stroke="#314b89"
+              />
+              <YAxis
+                label={{
+                  value: "Count",
+                  angle: -90,
+                  position: "insideLeft",
+                }}
+                fontSize={12}
+                stroke="#314b89"
+              />
+              <Tooltip
+                formatter={(value, name) => [value, "Count"]}
+                labelFormatter={(label) => `Category: ${label}`}
+                contentStyle={{
+                  backgroundColor: "#f8f9fa",
+                  border: "1px solid #314b89",
+                  borderRadius: "4px",
+                }}
+              />
+              <Legend />
+              <Bar
+                dataKey="count"
+                fill="#314b89"
+                name="Count"
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        );
+    }
+  };
+
   return (
     <div className="page-main-card">
       {/* Chart Section - Only show when dataset is selected */}
@@ -564,6 +688,25 @@ export default function DatasetMasterListPage() {
               Chart for: {selectedDataset?.dataset_name}
             </h2>
             <div style={{ display: "flex", gap: 10 }}>
+              {/* Chart Type Selection */}
+              <select
+                value={chartType}
+                onChange={(e) => setChartType(e.target.value)}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 4,
+                  border: "1px solid #314b89",
+                  background: "#fff",
+                  color: "#314b89",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: 500,
+                }}
+              >
+                <option value="bar">Bar Chart</option>
+                <option value="line">Line Chart</option>
+                <option value="pie">Pie Chart</option>
+              </select>
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 style={{
@@ -836,55 +979,10 @@ export default function DatasetMasterListPage() {
             <div>
               <div style={{ marginBottom: 15, fontSize: 14, color: "#666" }}>
                 Data visualization from SQL query results ({chartData.length}{" "}
-                data points)
+                data points) - {chartType.charAt(0).toUpperCase() + chartType.slice(1)} Chart
               </div>
               <div style={{ width: "100%", height: "400px" }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={chartData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 60,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ef" />
-                    <XAxis
-                      dataKey="label"
-                      angle={-45}
-                      textAnchor="end"
-                      height={80}
-                      fontSize={12}
-                      stroke="#314b89"
-                    />
-                    <YAxis
-                      label={{
-                        value: "Count",
-                        angle: -90,
-                        position: "insideLeft",
-                      }}
-                      fontSize={12}
-                      stroke="#314b89"
-                    />
-                    <Tooltip
-                      formatter={(value, name) => [value, "Count"]}
-                      labelFormatter={(label) => `Category: ${label}`}
-                      contentStyle={{
-                        backgroundColor: "#f8f9fa",
-                        border: "1px solid #314b89",
-                        borderRadius: "4px",
-                      }}
-                    />
-                    <Legend />
-                    <Bar
-                      dataKey="count"
-                      fill="#314b89"
-                      name="Count"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
+                {renderChart()}
               </div>
               {/* Gemini Q&A Section */}
               <div
