@@ -7,6 +7,8 @@ import SqlQueryPage from './pages/SqlQueryPage';
 import IndicatorMasterPage from './pages/IndicatorMasterPage';
 import DerivedAttributePage from './pages/DerivedAttributePage';
 import DatasetBuilderPage from './pages/DatasetBuilderPage';
+import DatasetMasterListPage from './pages/DatasetMasterListPage';
+import DatasetGraphPage from './pages/DatasetGraphPage';
 import './App.css';
 
 function App() {
@@ -20,16 +22,21 @@ function App() {
           <Link to="/indicator-master" className="sidenav-link indicator"><span role="img" aria-label="indicator">🏷️</span> Indicator Master</Link>
           <Link to="/derived-attribute" className="sidenav-link derived"><span role="img" aria-label="derived">🧮</span> Derived Attribute Builder</Link>
           <Link to="/dataset-builder" className="sidenav-link dataset"><span role="img" aria-label="dataset">🗃️</span> Dataset Builder</Link>
+          <Link to="/dataset-master-list" className="sidenav-link dataset-master">
+            <span role="img" aria-label="dataset-master">📋</span> Dataset Master List
+          </Link>
         </nav>
         <div className="main-content">
           <Routes>
-        <Route path="/upload" element={<UploadPage />} />
-        <Route path="/visualize" element={<VisualizePage />} />
-        <Route path="/sql" element={<SqlQueryPage />} />
-        <Route path="/indicator-master" element={<IndicatorMasterPage />} />
-        <Route path="/derived-attribute" element={<DerivedAttributePage />} />
-        <Route path="/dataset-builder" element={<DatasetBuilderPage />} />
-        <Route path="*" element={<Navigate to="/visualize" replace />} />
+            <Route path="/upload" element={<UploadPage />} />
+            <Route path="/visualize" element={<VisualizePage />} />
+            <Route path="/sql" element={<SqlQueryPage />} />
+            <Route path="/indicator-master" element={<IndicatorMasterPage />} />
+            <Route path="/derived-attribute" element={<DerivedAttributePage />} />
+            <Route path="/dataset-builder" element={<DatasetBuilderPage />} />
+            <Route path="/dataset-master-list" element={<DatasetMasterListPage />} />
+            <Route path="/dataset-graph/:id" element={<DatasetGraphPage />} />
+            <Route path="*" element={<Navigate to="/visualize" replace />} />
           </Routes>
         </div>
       </div>

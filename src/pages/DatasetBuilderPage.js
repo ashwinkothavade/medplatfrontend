@@ -9,7 +9,7 @@ export default function DatasetBuilderPage() {
   const [sampleData, setSampleData] = useState({});
   const [joins, setJoins] = useState([]);
   // Column selection and renaming
-  const [columnSelections, setColumnSelections] = useState({}); // { table: [{ column_name, selected, alias }] }
+  const [columnSelections, setColumnSelections] = useState({}); // { table: [{ column_name, selected, alias, order }] }
 
   // Derived columns (formulas)
   const [derivedColumns, setDerivedColumns] = useState([]); // [{ name, formula }]
@@ -34,6 +34,7 @@ export default function DatasetBuilderPage() {
     "ILIKE",
     "IN",
     "NOT IN",
+    "BETWEEN",
     "IS NULL",
     "IS NOT NULL",
   ];
@@ -44,31 +45,50 @@ export default function DatasetBuilderPage() {
   // Helper: Generate SQL
   function generateSQL() {
     if (selectedTables.length === 0) return "";
-    // SELECT clause
-    const selectCols = selectedTables.flatMap((table) =>
+
+    // Get all selected columns with their order
+    const allSelectedColumns = selectedTables.flatMap((table) =>
       (
         columnSelections[table] ||
-        (metadata[table] || []).map((c) => ({
+        (metadata[table] || []).map((c, index) => ({
           column_name: c.column_name,
           selected: true,
           alias: c.column_name,
+          aggregate: "",
+          order: index,
+          table: table,
         }))
       )
         .filter((c) => c.selected !== false)
-        .map((c) => {
-          const isGrouped = groupByColumns.some(
-            (g) => g.table === table && g.column_name === c.column_name
-          );
-          let colExpr = `${table}."${c.column_name}"`;
-          if (!isGrouped && c.aggregate && c.aggregate !== "") {
-            colExpr = `${c.aggregate}(${colExpr})`;
-          }
-          if (c.alias && c.alias !== c.column_name) {
-            colExpr += ` AS "${c.alias}"`;
-          }
-          return colExpr;
-        })
+        .map((c) => ({ ...c, table }))
     );
+
+    // Sort columns by their order
+    allSelectedColumns.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    const selectCols = allSelectedColumns.map((c) => {
+      const isGrouped = groupByColumns.some(
+        (g) => g.table === c.table && g.column_name === c.column_name
+      );
+      let colExpr = `${c.table}."${c.column_name}"`;
+
+      // Apply aggregate function if specified
+      if (c.aggregate && c.aggregate !== "") {
+        if (c.aggregate === "COUNT DISTINCT") {
+          colExpr = `COUNT(DISTINCT ${colExpr})`;
+        } else {
+          colExpr = `${c.aggregate}(${colExpr})`;
+        }
+      }
+
+      // Apply alias if different from column name
+      if (c.alias && c.alias !== c.column_name) {
+        colExpr += ` AS "${c.alias}"`;
+      }
+
+      return colExpr;
+    });
+
     const derivedCols = derivedColumns.map(
       (dc) => `${dc.formula} AS "${dc.name}"`
     );
@@ -103,6 +123,12 @@ export default function DatasetBuilderPage() {
               expr += ` ${w.operator} (${w.value})`;
             } else if (w.operator === "LIKE" || w.operator === "ILIKE") {
               expr += ` ${w.operator} '%${w.value}%'`;
+            } else if (w.operator === "BETWEEN") {
+              if (Array.isArray(w.value) && w.value.length === 2) {
+                expr += ` BETWEEN '${w.value[0]}' AND '${w.value[1]}'`;
+              } else {
+                expr += ` BETWEEN '' AND ''`;
+              }
             } else {
               expr += ` ${w.operator} '${w.value}'`;
             }
@@ -135,8 +161,22 @@ export default function DatasetBuilderPage() {
 
   // Save handler (placeholder)
   const handleSave = async () => {
-    // TODO: Implement save logic (e.g., POST to /api/save-dataset with all relevant info)
-    alert("Save functionality not implemented yet.");
+    const tableName = `dataset_${new Date()
+      .toISOString()
+      .replace(/[:.]/g, "_")}`;
+    try {
+      const res = await axios.post("/api/save-dataset", {
+        sql: sqlPreview,
+        tableName,
+      });
+      if (res.data.success) {
+        alert(`Table '${tableName}' created.`);
+      } else {
+        alert(res.data.error);
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || err.message);
+    }
   };
 
   // Fetch all tables on mount
@@ -161,13 +201,7 @@ export default function DatasetBuilderPage() {
           .then((res) => setSampleData((d) => ({ ...d, [table]: res.data })));
       }
     });
-  }, [selectedTables]);
-
-  // Handle table selection (multi-select)
-  const handleTableChange = (e) => {
-    const opts = Array.from(e.target.selectedOptions).map((opt) => opt.value);
-    setSelectedTables(opts);
-  };
+  }, [selectedTables, metadata, sampleData]);
 
   // Stepper state
   const [step, setStep] = useState(1);
@@ -178,6 +212,84 @@ export default function DatasetBuilderPage() {
     { label: "Group By & Derived" },
     { label: "Preview & Save" },
   ];
+
+  // Helper function to move column up in order
+  const moveColumnUp = (table, columnName) => {
+    setColumnSelections((cs) => {
+      const columns = cs[table] || [];
+      const selectedColumns = columns.filter((c) => c.selected !== false);
+      const sortedSelected = [...selectedColumns].sort(
+        (a, b) => (a.order || 0) - (b.order || 0)
+      );
+
+      const currentIndex = sortedSelected.findIndex(
+        (c) => c.column_name === columnName
+      );
+      if (currentIndex > 0) {
+        const currentCol = sortedSelected[currentIndex];
+        const prevCol = sortedSelected[currentIndex - 1];
+
+        const newColumns = columns.map((c) => {
+          if (c.column_name === currentCol.column_name) {
+            return { ...c, order: prevCol.order };
+          }
+          if (c.column_name === prevCol.column_name) {
+            return { ...c, order: currentCol.order };
+          }
+          return c;
+        });
+
+        return { ...cs, [table]: newColumns };
+      }
+      return cs;
+    });
+  };
+
+  // Helper function to move column down in order
+  const moveColumnDown = (table, columnName) => {
+    setColumnSelections((cs) => {
+      const columns = cs[table] || [];
+      const selectedColumns = columns.filter((c) => c.selected !== false);
+      const sortedSelected = [...selectedColumns].sort(
+        (a, b) => (a.order || 0) - (b.order || 0)
+      );
+
+      const currentIndex = sortedSelected.findIndex(
+        (c) => c.column_name === columnName
+      );
+      if (currentIndex < sortedSelected.length - 1 && currentIndex >= 0) {
+        const currentCol = sortedSelected[currentIndex];
+        const nextCol = sortedSelected[currentIndex + 1];
+
+        const newColumns = columns.map((c) => {
+          if (c.column_name === currentCol.column_name) {
+            return { ...c, order: nextCol.order };
+          }
+          if (c.column_name === nextCol.column_name) {
+            return { ...c, order: currentCol.order };
+          }
+          return c;
+        });
+
+        return { ...cs, [table]: newColumns };
+      }
+      return cs;
+    });
+  };
+
+  // Helper function to get sorted columns for display
+  const getSortedColumns = (table) => {
+    const columns =
+      columnSelections[table] ||
+      (metadata[table] || []).map((c, index) => ({
+        column_name: c.column_name,
+        selected: true,
+        alias: c.column_name,
+        aggregate: "",
+        order: index,
+      }));
+    return [...columns].sort((a, b) => (a.order || 0) - (b.order || 0));
+  };
 
   return (
     <div className="page-main-card">
@@ -337,13 +449,21 @@ export default function DatasetBuilderPage() {
                       );
                       setColumnSelections((cs) => ({
                         ...cs,
-                        [table]: (metadata[table] || []).map((c) => ({
+                        [table]: (metadata[table] || []).map((c, index) => ({
                           column_name: c.column_name,
                           selected: selectedCols.includes(c.column_name),
                           alias:
                             (cs[table] || []).find(
                               (col) => col.column_name === c.column_name
                             )?.alias || c.column_name,
+                          aggregate:
+                            (cs[table] || []).find(
+                              (col) => col.column_name === c.column_name
+                            )?.aggregate || "",
+                          order:
+                            (cs[table] || []).find(
+                              (col) => col.column_name === c.column_name
+                            )?.order ?? index,
                         })),
                       }));
                     }}
@@ -364,13 +484,12 @@ export default function DatasetBuilderPage() {
                       onClick={() =>
                         setColumnSelections((cs) => ({
                           ...cs,
-                          [table]: (metadata[table] || []).map((c) => ({
+                          [table]: (metadata[table] || []).map((c, index) => ({
                             column_name: c.column_name,
                             selected: true,
-                            alias:
-                              (cs[table] || []).find(
-                                (col) => col.column_name === c.column_name
-                              )?.alias || c.column_name,
+                            alias: c.column_name,
+                            aggregate: "",
+                            order: index,
                           })),
                         }))
                       }
@@ -391,13 +510,21 @@ export default function DatasetBuilderPage() {
                       onClick={() =>
                         setColumnSelections((cs) => ({
                           ...cs,
-                          [table]: (metadata[table] || []).map((c) => ({
+                          [table]: (metadata[table] || []).map((c, index) => ({
                             column_name: c.column_name,
                             selected: false,
                             alias:
                               (cs[table] || []).find(
                                 (col) => col.column_name === c.column_name
                               )?.alias || c.column_name,
+                            aggregate:
+                              (cs[table] || []).find(
+                                (col) => col.column_name === c.column_name
+                              )?.aggregate || "",
+                            order:
+                              (cs[table] || []).find(
+                                (col) => col.column_name === c.column_name
+                              )?.order ?? index,
                           })),
                         }))
                       }
@@ -407,37 +534,132 @@ export default function DatasetBuilderPage() {
                   </div>
                 </div>
                 <div>
-                  <b className="section-label">Rename Selected Columns:</b>
+                  <b className="section-label">Configure Selected Columns:</b>
                   <table
                     style={{
                       borderCollapse: "collapse",
                       fontSize: 15,
                       margin: "10px 0",
+                      width: "100%",
                     }}
                   >
                     <thead>
                       <tr>
-                        <th style={{ border: "1px solid #eee", padding: 5 }}>
+                        <th
+                          style={{
+                            border: "1px solid #eee",
+                            padding: 5,
+                            background: "#f8f8f8",
+                          }}
+                        >
+                          Order
+                        </th>
+                        <th
+                          style={{
+                            border: "1px solid #eee",
+                            padding: 5,
+                            background: "#f8f8f8",
+                          }}
+                        >
                           Column
                         </th>
-                        <th style={{ border: "1px solid #eee", padding: 5 }}>
+                        <th
+                          style={{
+                            border: "1px solid #eee",
+                            padding: 5,
+                            background: "#f8f8f8",
+                          }}
+                        >
+                          Aggregate Function
+                        </th>
+                        <th
+                          style={{
+                            border: "1px solid #eee",
+                            padding: 5,
+                            background: "#f8f8f8",
+                          }}
+                        >
                           Alias
                         </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {(
-                        columnSelections[table] ||
-                        (metadata[table] || []).map((c) => ({
-                          column_name: c.column_name,
-                          selected: true,
-                          alias: c.column_name,
-                        }))
-                      )
+                      {getSortedColumns(table)
                         .filter((c) => c.selected !== false)
-                        .map((col) => {
+                        .map((col, index) => {
+                          const sortedColumns = getSortedColumns(table).filter(
+                            (c) => c.selected !== false
+                          );
+                          const isFirst = index === 0;
+                          const isLast = index === sortedColumns.length - 1;
                           return (
                             <tr key={col.column_name}>
+                              <td
+                                style={{
+                                  border: "1px solid #eee",
+                                  padding: 5,
+                                  textAlign: "center",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: 5,
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      moveColumnUp(table, col.column_name)
+                                    }
+                                    disabled={isFirst}
+                                    style={{
+                                      padding: "2px 6px",
+                                      fontSize: 12,
+                                      border: "1px solid #ddd",
+                                      background: isFirst ? "#be2121ff" : "#fff",
+                                      cursor: isFirst
+                                        ? "not-allowed"
+                                        : "pointer",
+                                      borderRadius: 3,
+                                    }}
+                                    title="Move up"
+                                  >
+                                    ↑
+                                  </button>
+                                  <span
+                                    style={{
+                                      minWidth: 20,
+                                      textAlign: "center",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    {index + 1}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      moveColumnDown(table, col.column_name)
+                                    }
+                                    disabled={isLast}
+                                    style={{
+                                      padding: "2px 6px",
+                                      fontSize: 12,
+                                      border: "1px solid #ddd",
+                                      background: isLast ? "#d20e0eff" : "#fff",
+                                      cursor: isLast
+                                        ? "not-allowed"
+                                        : "pointer",
+                                      borderRadius: 3,
+                                    }}
+                                    title="Move down"
+                                  >
+                                    ↓
+                                  </button>
+                                </div>
+                              </td>
                               <td
                                 style={{
                                   border: "1px solid #eee",
@@ -450,20 +672,71 @@ export default function DatasetBuilderPage() {
                               <td
                                 style={{ border: "1px solid #eee", padding: 5 }}
                               >
-                                <input
-                                  type="text"
-                                  value={col.alias}
-                                  style={{ width: 120 }}
+                                <select
+                                  value={col.aggregate || ""}
                                   onChange={(e) => {
                                     setColumnSelections((cs) => ({
                                       ...cs,
                                       [table]: (
                                         cs[table] ||
-                                        (metadata[table] || []).map((c) => ({
-                                          column_name: c.column_name,
-                                          selected: true,
-                                          alias: c.column_name,
-                                        }))
+                                        (metadata[table] || []).map(
+                                          (c, idx) => ({
+                                            column_name: c.column_name,
+                                            selected: true,
+                                            alias: c.column_name,
+                                            aggregate: "",
+                                            order: idx,
+                                          })
+                                        )
+                                      ).map((c) =>
+                                        c.column_name === col.column_name
+                                          ? { ...c, aggregate: e.target.value }
+                                          : c
+                                      ),
+                                    }));
+                                  }}
+                                  style={{
+                                    width: "100%",
+                                    padding: 4,
+                                    fontSize: 14,
+                                  }}
+                                >
+                                  <option value="">None</option>
+                                  <option value="COUNT">COUNT</option>
+                                  <option value="SUM">SUM</option>
+                                  <option value="AVG">AVG</option>
+                                  <option value="MIN">MIN</option>
+                                  <option value="MAX">MAX</option>
+                                  <option value="COUNT DISTINCT">
+                                    COUNT DISTINCT
+                                  </option>
+                                </select>
+                              </td>
+                              <td
+                                style={{ border: "1px solid #eee", padding: 5 }}
+                              >
+                                <input
+                                  type="text"
+                                  value={col.alias}
+                                  style={{
+                                    width: "100%",
+                                    padding: 4,
+                                    fontSize: 14,
+                                  }}
+                                  onChange={(e) => {
+                                    setColumnSelections((cs) => ({
+                                      ...cs,
+                                      [table]: (
+                                        cs[table] ||
+                                        (metadata[table] || []).map(
+                                          (c, idx) => ({
+                                            column_name: c.column_name,
+                                            selected: true,
+                                            alias: c.column_name,
+                                            aggregate: "",
+                                            order: idx,
+                                          })
+                                        )
                                       ).map((c) =>
                                         c.column_name === col.column_name
                                           ? { ...c, alias: e.target.value }
@@ -478,6 +751,20 @@ export default function DatasetBuilderPage() {
                         })}
                     </tbody>
                   </table>
+                  <div
+                    style={{
+                      marginTop: 10,
+                      padding: 8,
+                      background: "#f0f8ff",
+                      borderRadius: 4,
+                      fontSize: 13,
+                    }}
+                  >
+                    <b>Note:</b> Use the ↑↓ arrows to reorder columns. The order
+                    here determines the column order in your final dataset. When
+                    using aggregate functions, consider adding Group By columns
+                    in Step 4 to group your data appropriately.
+                  </div>
                 </div>
               </div>
               <div>
@@ -872,8 +1159,44 @@ export default function DatasetBuilderPage() {
                   </option>
                 ))}
               </select>
-              {w.operator &&
-                !["IS NULL", "IS NOT NULL"].includes(w.operator) && (
+              {w.operator && !["IS NULL", "IS NOT NULL"].includes(w.operator) && (
+                w.operator === "BETWEEN" ? (
+                  <>
+                    <input
+                      type="text"
+                      value={Array.isArray(w.value) ? w.value[0] || "" : ""}
+                      placeholder="Start"
+                      onChange={(e) => {
+                        const start = e.target.value;
+                        setWhereClauses((clauses) =>
+                          clauses.map((c, i) =>
+                            i === idx
+                              ? { ...c, value: [start, Array.isArray(c.value) ? c.value[1] : ""] }
+                              : c
+                          )
+                        );
+                      }}
+                      style={{ width: 60, marginRight: 4 }}
+                    />
+                    <span>and</span>
+                    <input
+                      type="text"
+                      value={Array.isArray(w.value) ? w.value[1] || "" : ""}
+                      placeholder="End"
+                      onChange={(e) => {
+                        const end = e.target.value;
+                        setWhereClauses((clauses) =>
+                          clauses.map((c, i) =>
+                            i === idx
+                              ? { ...c, value: [Array.isArray(c.value) ? c.value[0] : "", end] }
+                              : c
+                          )
+                        );
+                      }}
+                      style={{ width: 60, marginLeft: 4 }}
+                    />
+                  </>
+                ) : (
                   <input
                     type="text"
                     value={w.value || ""}
@@ -887,7 +1210,8 @@ export default function DatasetBuilderPage() {
                     }
                     style={{ width: 120 }}
                   />
-                )}
+                )
+              )}
               <button
                 type="button"
                 onClick={() =>
@@ -992,6 +1316,19 @@ export default function DatasetBuilderPage() {
             }}
           >
             <b className="section-label">Group By Columns:</b>
+            <div
+              style={{
+                marginBottom: 10,
+                padding: 8,
+                background: "#fff3cd",
+                borderRadius: 4,
+                fontSize: 13,
+              }}
+            >
+              <b>Tip:</b> When you have aggregate functions (SUM, COUNT, AVG,
+              etc.) applied to columns in Step 2, you should group by
+              non-aggregated columns to get meaningful results.
+            </div>
             <div style={{ margin: "10px 0" }}>
               <Select
                 isMulti
@@ -1258,33 +1595,32 @@ export default function DatasetBuilderPage() {
       {/* Column Selection Summary - Show on all steps after step 2 */}
       {selectedTables.length > 0 && step > 2 && (
         <div className="section-card" style={{ margin: "30px 0" }}>
-          <b>Selected Columns for Output Dataset:</b>
+          <b>Selected Columns for Output Dataset (in order):</b>
           <ul style={{ margin: "10px 0 0 16px", fontSize: 15 }}>
-            {selectedTables.flatMap((table) =>
-              (
-                columnSelections[table] ||
-                (metadata[table] || []).map((c) => ({
-                  column_name: c.column_name,
-                  selected: true,
-                  alias: c.column_name,
-                }))
-              )
-                .filter((c) => c.selected !== false)
-                .map((c) => (
-                  <li key={table + "." + c.column_name}>
-                    <span style={{ color: "#314b89" }}>{table}</span>.
-                    <span style={{ fontFamily: "monospace" }}>
-                      {c.column_name}
+            {selectedTables.flatMap((table) => {
+              const sortedColumns = getSortedColumns(table).filter(
+                (c) => c.selected !== false
+              );
+              return sortedColumns.map((c, index) => (
+                <li key={table + "." + c.column_name}>
+                  <span style={{ color: "#888", fontSize: 13, marginRight: 8 }}>
+                    #{index + 1}
+                  </span>
+                  <span style={{ color: "#314b89" }}>{table}</span>.
+                  <span style={{ fontFamily: "monospace" }}>
+                    {c.aggregate && c.aggregate !== ""
+                      ? `${c.aggregate}(${c.column_name})`
+                      : c.column_name}
+                  </span>
+                  {c.alias && c.alias !== c.column_name ? (
+                    <span>
+                      {" "}
+                      as <b>{c.alias}</b>
                     </span>
-                    {c.alias && c.alias !== c.column_name ? (
-                      <span>
-                        {" "}
-                        as <b>{c.alias}</b>
-                      </span>
-                    ) : null}
-                  </li>
-                ))
-            )}
+                  ) : null}
+                </li>
+              ));
+            })}
           </ul>
         </div>
       )}
