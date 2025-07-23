@@ -67,6 +67,7 @@ export default function DatasetBuilderPage() {
     allSelectedColumns.sort((a, b) => (a.order || 0) - (b.order || 0));
 
     const selectCols = allSelectedColumns.map((c) => {
+      // eslint-disable-next-line no-unused-vars
       const isGrouped = groupByColumns.some(
         (g) => g.table === c.table && g.column_name === c.column_name
       );
@@ -111,7 +112,6 @@ export default function DatasetBuilderPage() {
     // WHERE clause
     let whereClause = "";
     if (whereClauses.length > 0) {
-      let prevLogic = "";
       whereClause =
         " WHERE " +
         whereClauses
@@ -133,7 +133,6 @@ export default function DatasetBuilderPage() {
               expr += ` ${w.operator} '${w.value}'`;
             }
             const logic = idx > 0 ? ` ${w.logic || "AND"} ` : "";
-            prevLogic = w.logic;
             return logic + expr;
           })
           .join("");
@@ -549,7 +548,7 @@ export default function DatasetBuilderPage() {
                           style={{
                             border: "1px solid #eee",
                             padding: 5,
-                            background: "#f8f8f8",
+                            background: "#f5e9e9ff",
                           }}
                         >
                           Order
@@ -558,7 +557,7 @@ export default function DatasetBuilderPage() {
                           style={{
                             border: "1px solid #eee",
                             padding: 5,
-                            background: "#f8f8f8",
+                            background: "#ece1e1ff",
                           }}
                         >
                           Column
@@ -567,7 +566,7 @@ export default function DatasetBuilderPage() {
                           style={{
                             border: "1px solid #eee",
                             padding: 5,
-                            background: "#f8f8f8",
+                            background: "#ecdbdbff",
                           }}
                         >
                           Aggregate Function
@@ -576,7 +575,7 @@ export default function DatasetBuilderPage() {
                           style={{
                             border: "1px solid #eee",
                             padding: 5,
-                            background: "#f8f8f8",
+                            background: "#e8d6d6ff",
                           }}
                         >
                           Alias
@@ -619,7 +618,9 @@ export default function DatasetBuilderPage() {
                                       padding: "2px 6px",
                                       fontSize: 12,
                                       border: "1px solid #ddd",
-                                      background: isFirst ? "#be2121ff" : "#fff",
+                                      background: isFirst
+                                        ? "#be2121ff"
+                                        : "#be2121ff",
                                       cursor: isFirst
                                         ? "not-allowed"
                                         : "pointer",
@@ -648,7 +649,9 @@ export default function DatasetBuilderPage() {
                                       padding: "2px 6px",
                                       fontSize: 12,
                                       border: "1px solid #ddd",
-                                      background: isLast ? "#d20e0eff" : "#fff",
+                                      background: isLast
+                                        ? "#be2121ff"
+                                        : "#be2121ff",
                                       cursor: isLast
                                         ? "not-allowed"
                                         : "pointer",
@@ -769,8 +772,26 @@ export default function DatasetBuilderPage() {
               </div>
               <div>
                 <b>Sample Data:</b>
-                <div className="table-scroll">
-                  <table className="data-table">
+                <div
+                  className="table-scroll"
+                  style={{
+                    maxHeight: 300,
+                    overflowY: "auto",
+                    overflowX: "auto",
+                    border: "1px solid #e0e7ef",
+                    borderRadius: 4,
+                    marginTop: 8,
+                  }}
+                >
+                  <table
+                    className="data-table"
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      fontSize: 13,
+                      minWidth: "max-content",
+                    }}
+                  >
                     <thead>
                       <tr>
                         {sampleData[table] && sampleData[table][0]
@@ -779,9 +800,16 @@ export default function DatasetBuilderPage() {
                                 key={col}
                                 style={{
                                   border: "1px solid #eee",
-                                  padding: 5,
+                                  padding: "6px 8px",
                                   background: "#f8f8f8",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  whiteSpace: "nowrap",
+                                  maxWidth: 150,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
                                 }}
+                                title={col}
                               >
                                 {col}
                               </th>
@@ -793,19 +821,37 @@ export default function DatasetBuilderPage() {
                       {(sampleData[table] || []).length === 0 ? (
                         <tr>
                           <td
-                            colSpan={10}
-                            style={{ color: "#aaa", textAlign: "center" }}
+                            colSpan={
+                              sampleData[table] && sampleData[table][0]
+                                ? Object.keys(sampleData[table][0]).length
+                                : 1
+                            }
+                            style={{
+                              color: "#aaa",
+                              textAlign: "center",
+                              padding: 20,
+                              fontStyle: "italic",
+                            }}
                           >
-                            No data
+                            No data available
                           </td>
                         </tr>
                       ) : (
-                        sampleData[table].map((row, i) => (
+                        sampleData[table].slice(0, 5).map((row, i) => (
                           <tr key={i}>
                             {Object.keys(row).map((col) => (
                               <td
                                 key={col}
-                                style={{ border: "1px solid #eee", padding: 5 }}
+                                style={{
+                                  border: "1px solid #eee",
+                                  padding: "4px 8px",
+                                  fontSize: 12,
+                                  maxWidth: 150,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                                title={String(row[col])}
                               >
                                 {String(row[col])}
                               </td>
@@ -1159,8 +1205,9 @@ export default function DatasetBuilderPage() {
                   </option>
                 ))}
               </select>
-              {w.operator && !["IS NULL", "IS NOT NULL"].includes(w.operator) && (
-                w.operator === "BETWEEN" ? (
+              {w.operator &&
+                !["IS NULL", "IS NOT NULL"].includes(w.operator) &&
+                (w.operator === "BETWEEN" ? (
                   <>
                     <input
                       type="text"
@@ -1171,7 +1218,13 @@ export default function DatasetBuilderPage() {
                         setWhereClauses((clauses) =>
                           clauses.map((c, i) =>
                             i === idx
-                              ? { ...c, value: [start, Array.isArray(c.value) ? c.value[1] : ""] }
+                              ? {
+                                  ...c,
+                                  value: [
+                                    start,
+                                    Array.isArray(c.value) ? c.value[1] : "",
+                                  ],
+                                }
                               : c
                           )
                         );
@@ -1188,7 +1241,13 @@ export default function DatasetBuilderPage() {
                         setWhereClauses((clauses) =>
                           clauses.map((c, i) =>
                             i === idx
-                              ? { ...c, value: [Array.isArray(c.value) ? c.value[0] : "", end] }
+                              ? {
+                                  ...c,
+                                  value: [
+                                    Array.isArray(c.value) ? c.value[0] : "",
+                                    end,
+                                  ],
+                                }
                               : c
                           )
                         );
@@ -1210,8 +1269,7 @@ export default function DatasetBuilderPage() {
                     }
                     style={{ width: 120 }}
                   />
-                )
-              )}
+                ))}
               <button
                 type="button"
                 onClick={() =>
@@ -1512,7 +1570,10 @@ export default function DatasetBuilderPage() {
               background: "#f9f9f9",
               padding: 12,
               borderRadius: 4,
-              fontSize: 15,
+              fontSize: 13,
+              overflow: "auto",
+              maxHeight: 200,
+              border: "1px solid #e0e7ef",
             }}
           >
             {sqlPreview}
@@ -1520,7 +1581,16 @@ export default function DatasetBuilderPage() {
           <button
             type="button"
             onClick={handlePreview}
-            style={{ marginBottom: 16 }}
+            style={{
+              marginBottom: 16,
+              padding: "8px 16px",
+              borderRadius: 4,
+              border: "1px solid #314b89",
+              background: "#314b89",
+              color: "#fff",
+              cursor: "pointer",
+              fontWeight: 500,
+            }}
           >
             Preview Data
           </button>
@@ -1528,44 +1598,100 @@ export default function DatasetBuilderPage() {
           {previewLoading ? (
             <div style={{ color: "#888", margin: "10px 0" }}>Loading...</div>
           ) : previewError ? (
-            <div style={{ color: "red", margin: "10px 0" }}>{previewError}</div>
-          ) : previewData && previewData.length > 0 ? (
             <div
-              className="table-scroll"
-              style={{ maxHeight: 300, overflow: "auto", marginBottom: 12 }}
+              style={{
+                color: "red",
+                margin: "10px 0",
+                padding: 10,
+                background: "#ffebee",
+                borderRadius: 4,
+              }}
             >
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    {Object.keys(previewData[0]).map((col) => (
-                      <th
-                        key={col}
-                        style={{
-                          border: "1px solid #eee",
-                          padding: 5,
-                          background: "#f8f8f8",
-                        }}
-                      >
-                        {col}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {previewData.map((row, i) => (
-                    <tr key={i}>
-                      {Object.keys(row).map((col) => (
-                        <td
+              <strong>Error:</strong> {previewError}
+            </div>
+          ) : previewData && previewData.length > 0 ? (
+            <div>
+              <div style={{ marginBottom: 8, fontSize: 14, color: "#666" }}>
+                Showing {previewData.length} rows
+              </div>
+              <div
+                className="table-scroll"
+                style={{
+                  maxHeight: 400,
+                  overflowY: "auto",
+                  overflowX: "auto",
+                  marginBottom: 12,
+                  border: "1px solid #e0e7ef",
+                  borderRadius: 4,
+                }}
+              >
+                <table
+                  className="data-table"
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: 13,
+                    minWidth: "max-content",
+                  }}
+                >
+                  <thead
+                    style={{
+                      position: "sticky",
+                      top: 0,
+                      background: "#f8f8f8",
+                      zIndex: 1,
+                    }}
+                  >
+                    <tr>
+                      {Object.keys(previewData[0]).map((col) => (
+                        <th
                           key={col}
-                          style={{ border: "1px solid #eee", padding: 5 }}
+                          style={{
+                            border: "1px solid #eee",
+                            padding: "8px 10px",
+                            background: "#f8f8f8",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            whiteSpace: "nowrap",
+                            maxWidth: 200,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                          title={col}
                         >
-                          {String(row[col])}
-                        </td>
+                          {col}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {previewData.map((row, i) => (
+                      <tr
+                        key={i}
+                        style={{ background: i % 2 === 0 ? "#fff" : "#f9f9f9" }}
+                      >
+                        {Object.keys(row).map((col) => (
+                          <td
+                            key={col}
+                            style={{
+                              border: "1px solid #eee",
+                              padding: "6px 10px",
+                              fontSize: 12,
+                              maxWidth: 200,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                            title={String(row[col])}
+                          >
+                            {String(row[col])}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : (
             <div style={{ color: "#888", margin: "10px 0" }}>
@@ -1579,7 +1705,7 @@ export default function DatasetBuilderPage() {
               marginTop: 16,
               background: "#314b89",
               color: "#fff",
-              padding: "8px 24px",
+              padding: "10px 24px",
               border: "none",
               borderRadius: 4,
               fontWeight: 500,
